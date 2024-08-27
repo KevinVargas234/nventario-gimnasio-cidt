@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tipo de Objeto</title>
+    <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+    <form id="jsonForm">
+        <h1>Tipo de Objeto</h1>
+        <label for="nombre">Nombre:</label>
+        <input type="text" id="nombre" name="nombre" required value="{nombre}"><br><br>
+
+        <label for="descripcion">Descripción:</label>
+        <input type="text" id="descripcion" name="descripcion" required value="{descripcion}"><br><br>
+
+        <label for="valor">Valor:</label>
+        <input type="number" id="valor" name="valor" required value="{valor}"><br><br>
+
+        <button type="submit">Enviar</button>
+        <button onclick=" history.go(-1)">Cancelar</button>
+    </form>
+
+    <script>
+        var params={}
+        var str=location.href?.split("?")[1]?.split("&")?.map(e=>e?.split("=")).forEach(e=>{params[e[0]]=e[1]})
+        document.getElementById('jsonForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Evita que el formulario se envíe de la manera tradicional
+
+            // Crear un objeto con los datos del formulario
+            const data = {
+                id:{id},
+                nombre: document.getElementById('nombre').value,
+                descripcion: document.getElementById('descripcion').value,
+                valor: parseInt(document.getElementById('valor').value)
+            };
+
+
+            var token = localStorage.getItem('token'); // Obtener el token del almacenamiento local
+			if (!token) {
+                location.href ="./login.html";
+				return;
+            }
+            console.log(data);
+            // Enviar los datos como JSON a /object_type
+            var ok=false;
+            fetch('/object_type', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {ok=response.ok;return response.json()})
+            .then(data => {
+                
+                alert(data.msg);   
+                if(ok){
+                    if(params.id)
+                        location.href ="./inventario.html?id="+params.id
+                    else
+                    location.href ="./inventario.html"
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Inventario Gimnasio CIDT</title>
+	<link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+	
+	<h1>Inventario Gimnasio CIDT</h1>
+	<input oninput="flitrar(this)" placeholder="buscar" type="text">
+	<select onchange="ordenar(this)">
+		<option selected value="1">ingreso</option>
+		<option value="2">alfabetico asc</option>
+		<option value="3">alfabetico des</option>
+	</select>
+	<br>
+	<a id="crear_tipo_objeto" href="./registrar_tipo_de_objeto.html"><button>Añadir tipo de objeto</button></a>
+	
+
+
+
+	<div id="inventario">
+		
+	</div>
+	<script>
+		var state_clases_objetos=[]
+		var clases_objetos=[]
+		var objetos=[]
+		var filtro=""
+		var orden="1"
+		function flitrar(e){
+			filtro=e.value
+			filtrar_ordenar()
+		}
+		function ordenar(e){
+			orden=e.value;
+			filtrar_ordenar()
+		}
+
+
+		function filtrar_ordenar(){
+			clases_objetos=[...state_clases_objetos]
+			clases_objetos=clases_objetos.filter((e)=>e.nombre.toLowerCase().includes(filtro.toLowerCase()))
+			
+			switch(orden){
+				case "1":		
+					break;
+				case "2":
+					clases_objetos=clases_objetos.toSorted((a,b)=>{
+						if(a.nombre>b.nombre)return 1;
+						if(a.nombre<b.nombre)return -1;
+					})
+					break;
+				case "3":
+					clases_objetos=clases_objetos.toSorted((a,b)=>{
+						if(a.nombre<b.nombre)return 1;
+						if(a.nombre>b.nombre)return -1;
+					})
+					break;
+			}
+			cargar_lista_inicial()
+		}
+
+
+		
+
+		window.addEventListener("popstate", function(event) {
+			location.reload()
+		});
+		function params(){
+			var obj={}
+			var str=location.href?.split("?")[1]?.split("&")?.map(e=>e?.split("=")).forEach(e=>{obj[e[0]]=e[1]})
+			return obj
+		}
+		
+		async function fetchDbObjects(id_to_load,name_to_load) {
+            var token = localStorage.getItem('token'); // Obtener el token del almacenamiento local
+			if (!token) {
+                location.href ="./login.html";
+				return;
+            }
+
+            try {
+                const response = await fetch('/items', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+				const data = await response.json();
+
+                if (response.ok) {
+                    
+                    clases_objetos=data.clases_objetos.filter((e)=>e)
+					state_clases_objetos=[...clases_objetos ]
+					objetos=data.objetos.filter((e)=>e)
+					if(typeof id_to_load=="undefined"){
+						var o=params()
+						if(o.id){
+							var co=clases_objetos.filter((e)=>e.id==o.id)[0]
+							if(!co){
+								document.write("<h1>404</h1>")
+								return
+							}
+							cargar_lista_de_objetos(o.id,co.nombre)
+						}else
+							cargar_lista_inicial()
+					}else
+						cargar_lista_de_objetos(id_to_load,name_to_load)
+				} else {
+                    alert(data.error||'Error al obtener los objetos de la base de datos');
+				}
+            } catch (error) {
+                alert('Error al conectar con el servidor');
+				console.log(error);
+            }
+        }
+		
+
+
+		function cargar_lista_inicial(){
+			window.history.pushState(null, "", location.href.split("?")[0])
+			
+			document.getElementById("crear_tipo_objeto").style.display="block"
+			var div=document.getElementById("inventario");
+			if(clases_objetos.length==0){
+				div.innerHTML="<h2>No hay objetos aun</h2>"
+				return				
+			}
+			div.innerHTML=""
+			for(let co in clases_objetos){
+
+				let elemento=document.createElement("div")
+				let cantidad=0
+				for(let o in objetos){
+					if(objetos[o].clase_objeto==clases_objetos[co].id){
+						cantidad++;
+					}
+				}
+				elemento.innerHTML=`<div class="child">
+					<h1>${clases_objetos[co].nombre}</h1>
+					<p>${clases_objetos[co].descripcion}</p>
+					<p>cantidad: ${cantidad}</p>
+					<p>valor unidad: ${clases_objetos[co].valor} $</p>
+					<p>valor total: ${clases_objetos[co].valor*cantidad} $</p>
+					<button>ver mas</button>
+				</div>`
+				div.appendChild(elemento.firstChild)
+				div.lastChild.querySelector("button").addEventListener("click",()=>{
+					cargar_lista_de_objetos(clases_objetos[co].id,clases_objetos[co].nombre);
+					
+				})
+			}
+		}
+		
+		function cargar_lista_de_objetos(id,name) {
+
+			window.history.pushState(null, "", location.href.split("?")[0]+"?id="+id)
+
+			document.getElementById("crear_tipo_objeto").style.display="none"
+			var objs=[]
+			for(let o in objetos){
+				if(objetos[o].clase_objeto==id){
+					objs.push(objetos[o])
+				}
+			}
+			var div=document.getElementById("inventario");
+			
+			div.innerHTML=`<h2>${name}</h2>
+				<button onclick="cargar_lista_inicial()">Volver</button>
+				<a href="editar_tipo_de_objeto.html?id=${id}">
+					<button>Editar tipo de objeto</button>
+				</a>
+				<a href="/crear_objeto.html?id=${id}">
+					<button>Añadir objeto</button>
+				</a>
+				<button class="danger" onclick="eliminar_tipo_de_objeto(${id})">Eliminar tipo de objeto</button><br/>`;
+			
+			var cont=0
+			for(var obj_ of objs){
+				let obj=obj_
+				let elemento=document.createElement("div")
+				elemento.innerHTML=`<div class="child">
+					<p>codigo: ${obj.codigo}</p>
+					<p>observacion: ${obj.observacion}</p>
+					<p>ubucacion actual: ${obj.ubucacion_actual}</p>
+					<button>Editar</button>
+					<button class="danger">Eliminar</button>
+				</div>`
+				var button_editar=null
+				var button_eliminar=null
+				elemento.querySelectorAll("button").forEach(e=>{
+					if(e.innerHTML=="Editar")
+						button_editar=e
+					if(e.innerHTML=="Eliminar")
+						button_eliminar=e
+				})
+				button_eliminar.addEventListener("click",()=>{
+					eliminar_objeto(obj.id,{id,nombre:name})
+				})
+				button_editar.addEventListener("click",()=>{
+					location.href ="/editar_objeto.html?id="+id+"&eid="+obj.id;
+				})
+
+				div.appendChild(elemento.firstChild)
+			}
+			
+		}
+		async function eliminar_tipo_de_objeto(id){
+			if(!confirm("¿esta seguro de eliminar el tipo de objeto?"))return
+			var token = localStorage.getItem('token'); // Obtener el token del almacenamiento local
+			if (!token) {
+                location.href ="./login.html";
+				return;
+            }
+
+            try {
+                const response = await fetch('/object_type?id='+id, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                });
+				const data = await response.json();
+
+                if (response.ok) {
+                    alert(data.msg)
+				} else {
+                    alert(data.error||'Error al obtener los objetos de la base de datos');
+				}
+				location.href ="./inventario.html";
+            } catch (error) {
+                alert('Error al conectar con el servidor');
+				location.href ="./inventario.html";
+            }
+		}
+		async function eliminar_objeto(id,clase_objeto){
+			if(!confirm("¿esta seguro de eliminar el objeto?"))return
+			var token = localStorage.getItem('token'); // Obtener el token del almacenamiento local
+			if (!token) {
+                location.href ="./login.html";
+				return;
+            }
+
+            try {
+                const response = await fetch('/object?id='+id, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                });
+				const data = await response.json();
+
+                if (response.ok) {
+                    alert(data.msg)
+				} else {
+                    alert(data.error||'Error al obtener los objetos de la base de datos');
+				}
+				fetchDbObjects(clase_objeto.id,clase_objeto.nombre)
+            } catch (error) {
+                alert('Error al conectar con el servidor');
+				fetchDbObjects(clase_objeto.id,clase_objeto.nombre)
+            }
+		}
+		fetchDbObjects()
+   </script>
+</body>
+</html>
